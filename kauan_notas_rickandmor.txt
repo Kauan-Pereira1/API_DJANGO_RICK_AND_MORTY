@@ -1,0 +1,222 @@
+models:
+
+
+from django.db import models
+from django.utils import timezone
+
+# Create your models here.
+
+
+class Location(models.Model):
+    name = models.CharField(max_length=150)
+    type = models.CharField(max_length=50)
+    dimension = models.CharField(max_length=150)
+    residents = models.DecimalField(max_digits=20, decimal_places=2)
+    
+    def __str__(self):
+        return self.name
+    
+    
+class Episode(models.Model):
+    name = models.CharField(max_length=150) # varchar do mysql
+    air_date = models.DateTimeField(auto_now_add=True)
+    episode = models.CharField(max_length=150) 
+    characters = models.CharField(max_length=150)
+    
+    
+    def __str__(self):
+        return self.name
+
+class Character(models.Model):
+    name = models.CharField(max_length=150) # varchar do mysql
+    status = models.CharField(max_length=150)
+    species = models.CharField(max_length=150)
+    type = models.CharField(max_length=150)
+    gender = models.CharField(max_length=50, blank=False, null=True)
+    origin = models.ForeignKey(Location, related_name="location", on_delete=models.CASCADE, blank=True, null=True)
+    location = models.ForeignKey(Location, related_name="location", on_delete=models.CASCADE)
+    episode = models.ForeignKey(Episode, related_name="episode", on_delete=models.CASCADE)
+    
+    
+    def __str__(self):
+        return self.name
+    
+    origin = models.ForeignKey(Location, related_name="location", on_delete=models.CASCADE, blank=True, null=True)
+    location = models.ForeignKey(Location, related_name="location", on_delete=models.CASCADE)
+    episode = models.ForeignKey(Episode, related_name="episode", on_delete=models.CASCADE)
+    
+    
+    
+    
+admin:
+
+from django.contrib import admin
+from .models import * #importando o People e o Planet!!!
+
+# Register your models here.
+
+class detPeople(admin.ModelAdmin):
+    list_display = ('id', 'name', 'hairColor', 'gender')
+    list_display_links = list_display
+    search_fields = ('name', 'hairColor',)
+    list_per_page = 10
+
+#registra as configurações realizadas do model na página de admin
+admin.site.register(People,detPeople)
+
+
+class detPlanet(admin.ModelAdmin):
+    list_display = ('id', 'name')
+    list_display_links = ('id',)
+    search_fields = ('name',)
+    list_per_page = 10
+
+#registra as configurações realizadas do model na página de admin
+admin.site.register(Planet,detPlanet)
+
+
+class detStarship(admin.ModelAdmin):
+    list_display = ('id', 'name')
+    list_display_links = ('id',)
+    search_fields = ('name',)
+    list_per_page = 10
+
+#registra as configurações realizadas do model na página de admin
+admin.site.register(Starships,detStarship)
+
+serializers:
+
+#importa a lib para serializar os dados
+from rest_framework import serializers
+#importa todos os models que criamos
+from .models import *
+
+class CharacterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Character
+        fields = '__all__'
+        many = True
+
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = '__all__'
+        many = True
+
+class EpisodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Episode
+        fields = '__all__'
+        many = True
+        
+
+views:
+
+#importa as tabelas models que criamos
+from .models import *
+#importa os serializers que criamos
+from .serializers import *
+#importar a classe de configuração da API
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.http import HttpResponse
+from django.http import HttpResponseNotFound
+from rest_framework import status
+
+class CharacterAPIView(APIView):
+    def post(self,request):
+        characterJson = request.data
+        characterSerialized = CharacterSerializer(data=characterJson, many=True)
+        characterSerialized.is_valid(raise_exception=True)
+        characterSerialized.save()
+        return Response(status=status.HTTP_201_CREATED,data=characterSerialized.data)
+        
+        
+    def get(self, request, id=''):
+        if id=='':
+            #primeiro vamos fazer um select all do banco:
+            characterFound = Character.objects.all() #select *from people;
+            #agora pegamos os dados em python e mandamos p/ json
+            characterSerialized = CharacterSerializer(characterFound, many=True)
+            #manda a resposta para quem chamou a API:
+            #Response(data="ok")
+            return Response(characterSerialized.data)
+        else:
+            try:
+                characterFound = Character.objects.get(id=id)
+                characterSerialized = CharacterSerializer(characterFound)
+                return Response(characterSerialized.data)
+            except Character.DoesNotExist:
+                return Response(status=404, data="Character Not Found!!!")
+        
+
+class LocationAPIView(APIView):
+    def post(self,request):
+        locationJson = request.data
+        locationSerialized = LocationSerializer(data=locationJson, many=True)
+        locationSerialized.is_valid(raise_exception=True)
+        locationSerialized.save()
+        return Response(status=status.HTTP_201_CREATED,data=locationSerialized.data)
+    def get(self,request, id =''):
+        if id == '':
+            #primeiro vamos fazer um select all do banco:
+            locationFound = Location.objects.all() #select *from Planet;
+            #agora pegamos os dados em python e mandamos p/ json
+            locationSerialized = LocationSerializer(locationFound, many=True)
+            #manda a resposta para quem chamou a API:
+            return Response(locationSerialized.data)
+        else: 
+            try:
+                locationFound = Location.objects.get(id=id)
+                locationSerialized = LocationSerializer(locationFound)
+                return Response(locationSerialized.data)
+            except location.DoesNotExist:
+                return Response(status=404, data="Location Not Found!!!")
+        
+        
+class EpisodeAPIView(APIView):
+    def post(self,request):
+        episodeJson = request.data
+        episodeSerialized = EpisodeSerializer(data=episodeJson, many=True)
+        episodeSerialized.is_valid(raise_exception=True)
+        episodeSerialized.save()
+        return Response(status=status.HTTP_201_CREATED,data=episodeSerialized.data)
+    def get(self, request, id=''):
+        if id == '':
+            #primeiro vamos fazer um select all do banco:
+            episodeFound = episode.objects.all() #select *from Starships;
+            #agora pegamos os dados em python e mandamos p/ json
+            episodeSerialized = episodeSerializer(episodeFound, many=True)
+            #manda a resposta para quem chamou a API:
+            return Response(episodeSerialized.data)
+        else:
+            try:
+                episodeFound = Episode.objects.get(id=id)
+                episodeSerialized = EpisodeSerializer(episodeFound)
+                return Response(episodeSerialized.data)
+            except Episode.DoesNotExist:
+                return Response(status=404, data="Episode Not Found!!!")
+        
+        
+        
+
+urls:
+
+#importando a biblioteca de 'caminhos' do django
+from django.urls import path
+#importando as views que criamos da nossa api:
+from .views import *
+
+
+urlpatterns = [
+    #estamos criando a rota/endpoint de acesso à API!
+    path("character/", CharacterAPIView.as_view(), name='character'),
+    path("character/<int:id>", CharacterAPIView.as_view(), name='characterParameter'),
+    path("location/", LocationAPIView.as_view(), name='location'),
+    path("location/<int:id>", LocationAPIView.as_view(), name='locationParameter'),
+    path("episode/", EpisodeAPIView.as_view(), name='episode'),    
+    path("episode/<int:id>", EpisodeAPIView.as_view(), name='episodeParameter'),
+]
+
+
+
